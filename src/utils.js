@@ -1,11 +1,19 @@
 export function setProps(dom, oldProps, newProps) {
     let key;
     for (key in oldProps) {
-
+        if (key !== 'children') {
+            if (!newProps.hasOwnProperty(key)) {
+                delProp(dom, key)
+            } else {
+                setProp(dom, key, newProps[key])
+            }
+        }
     }
     for (key in newProps) {
         if (key !== 'children') {
-            setProp(dom, key, newProps[key])
+            if (!oldProps.hasOwnProperty(key)) {
+                setProp(dom, key, newProps[key])
+            }
         }
     }
 }
@@ -30,4 +38,18 @@ function setProp(dom, key, value) {
     } else {
         dom.setAttribute(key, value);
     }
+}
+/**
+ * dom节点移除html属性
+ * @param {*} dom 
+ * @param {*} key 
+ */
+function delProp(dom, key) {
+    if (key === 'className') {
+        key = 'class';
+    }
+    if (/^on/.test(key)) {
+        key = key.toLowerCase();
+    }
+    dom.removeAttribute(key);
 }
