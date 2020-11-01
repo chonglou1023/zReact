@@ -1,7 +1,25 @@
 import React from './zReact';
 import ReactDOM from './zReactDOM';
 const root = document.getElementById('root');
-
+class Counter extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      number: 0
+    }
+  }
+  onClick() {
+    this.setState({ number: this.state.number + 1 })
+  }
+  render() {
+    return (
+      <div>
+        <span>{`${this.props.name}:${this.state.number}`}</span>
+        <button onClick={this.onClick.bind(this)}>加1</button>
+      </div>
+    )
+  }
+}
 const jsx = (
   <div id="container" className="ss">
     <h1 id="a">hhh</h1>
@@ -9,6 +27,7 @@ const jsx = (
       <p>nihao</p>
       <span>buu</span>
     </div>
+    <Counter name="计数器" />
   </div>
 )
 const jsx2 = (

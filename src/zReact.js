@@ -1,5 +1,7 @@
 import { REACT_ELEMENT_TYPE } from './zSymbols';
 import { TEXT_NODE } from './zreact-dom/shared/HTMLNodeType';
+import { Update } from './UpdateQuene';
+import { scheduleRoot } from './schedule';
 
 
 const ReactCurrentOwner = {
@@ -129,7 +131,22 @@ export function createElement(type, config, children) {
         props,
     );
 }
-
+class Component {
+    constructor(props) {
+        this.props = props;
+        // this.updateQuene = new UpdateQuene();
+    }
+    setState(payload) {
+        let update = new Update(payload);
+        // updateQuene是放在类组件对应的fiber节点的internalFiber上的
+        this.internalFiber.updateQuene.enqueneUpdate(update);
+        // this.updateQuene.enqueneUpdate(update);
+        scheduleRoot();
+    }
+}
+Component.prototype.isReactComponent = {
+};
 export default {
-    createElement
+    createElement,
+    Component
 }
