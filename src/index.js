@@ -44,9 +44,9 @@ const jsx3 = (
   <div id="container" className="ss">
     <h1 id="a">hhh3</h1>
     <div id="inner" style={{ border: '1px solid red' }}>
-      <p>nihao3</p>
       <span>buu3</span>
     </div>
+    <h2>333</h2>
   </div>
 )
 ReactDOM.render(jsx, root);

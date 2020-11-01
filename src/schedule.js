@@ -143,12 +143,6 @@ function reconcilerChildren(currentFiber, newChildren) {
     let prevSibling;
     // 当前fiber对应的老fiber tree上的引用fiber的子fiber
     let oldFiber = currentFiber.alternate && currentFiber.alternate.child;
-    if (oldFiber) {
-        // 清空老fiber的副作用，防止副作用链出错
-        oldFiber.firstEffect = oldFiber.lastEffect = oldFiber.nextEffect = null;
-        // 清空老fiber的兄弟链，防止fiber链表出错
-        oldFiber.sibling = null;
-    }
     // 循环子元素虚拟DOM，为每个子元素生成一个fiber
     while (newChildIndex < newChildren.length || oldFiber) {
         let newChild = newChildren[newChildIndex];
@@ -171,6 +165,9 @@ function reconcilerChildren(currentFiber, newChildren) {
                 newFiber.effectTag = Update;
                 newFiber.alternate = oldFiber;
                 newFiber.updateQuene = oldFiber.updateQuene || new UpdateQuene();
+                newFiber.firstEffect = null;// 清空老fiber的副作用，防止副作用链出错
+                newFiber.lastEffect = null;
+                newFiber.nextEffect = null;
             } else {
                 // 第一次更新时，没有老fiber可以使用
                 newFiber = {
@@ -262,7 +259,6 @@ function commitRoot() {
     let currentFiber = workInProgressRoot.firstEffect;
     // 从第一个更新fiber开始
     while (currentFiber) {
-        console.log(currentFiber)
         // 挂载DOM元素
         commitWork(currentFiber);
         currentFiber = currentFiber.nextEffect;
