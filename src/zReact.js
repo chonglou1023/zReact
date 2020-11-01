@@ -1,7 +1,7 @@
 import { REACT_ELEMENT_TYPE } from './zSymbols';
 import { TEXT_NODE } from './zreact-dom/shared/HTMLNodeType';
 import { Update } from './UpdateQuene';
-import { scheduleRoot } from './schedule';
+import { scheduleRoot,useReducer,useState } from './schedule';
 
 
 const ReactCurrentOwner = {
@@ -148,5 +148,7 @@ Component.prototype.isReactComponent = {
 };
 export default {
     createElement,
-    Component
+    Component,
+    useReducer,
+    useState,
 }

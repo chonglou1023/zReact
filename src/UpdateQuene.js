@@ -31,3 +31,7 @@ export class UpdateQuene {
         return state;
     }
 }
+export default {
+    Update,
+    UpdateQuene
+}

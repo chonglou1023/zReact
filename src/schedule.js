@@ -1,14 +1,16 @@
 // import { reconcilerChildren } from './reconciler';
-import { HostRoot, HostComponent, HostText, ClassComponent } from './zreact-reconciler/ReactWorkTags';
+import { HostRoot, HostComponent, HostText, ClassComponent, FunctionComponent } from './zreact-reconciler/ReactWorkTags';
 import { setProps } from './utils';
 import { TEXT_NODE } from './zreact-dom/shared/HTMLNodeType';
 import { Deletion, Placement, Update } from './zreact-reconciler/ReactSideEffectTags';
-import { UpdateQuene } from './UpdateQuene';
+import UpdateDefault, { UpdateQuene } from './UpdateQuene';
 
 let workInProgressRoot = null;// 当前正在渲染的fiber tree的根
 let nextUnitOfWork = null;// 下一个工作单元
 let currentRoot = null;// 当前页面上渲染的fiber tree的根
 let deletions = [];// 本次更新待删除的fiber节点列表，删除不放入effect list
+let workInProgressFiber = null;// 当前正在执行的fiber节点
+let hooksIndex = 0;// hooks索引
 //-----------------------调度开始------------------------
 export function scheduleRoot(rootFiber) {
     if (currentRoot && currentRoot.alternate) {// 第二次及之后的更新
@@ -93,6 +95,8 @@ function beginWork(currentFiber) {
         updateHostComp(currentFiber);
     } else if (currentFiber.tag === ClassComponent) {
         updateClassComp(currentFiber);
+    } else if (currentFiber.tag === FunctionComponent) {
+        updateFuncComp(currentFiber);
     }
 }
 // 创建更新根fiber
@@ -133,6 +137,16 @@ function updateClassComp(currentFiber) {
     let newChildren = [newElement];
     reconcilerChildren(currentFiber, newChildren);
 }
+// 创建更新函数组件
+function updateFuncComp(currentFiber) {
+    // 每次执行函数组件时，清空hooks及索引
+    workInProgressFiber = currentFiber;
+    workInProgressFiber.hooks = [];
+    hooksIndex = 0;
+    let newElement = currentFiber.type(currentFiber.props);
+    let newChildren = [newElement];
+    reconcilerChildren(currentFiber, newChildren);
+}
 /**
  * 调和虚拟DOM生成fiber链表
  * @param {*} currentFiber 当前fiber
@@ -150,8 +164,12 @@ function reconcilerChildren(currentFiber, newChildren) {
         let newFiber;
         // 老fiber与新的虚拟DOM元素类型相同
         let sameType = oldFiber && newChild && oldFiber.type === newChild.type;
-        if (newChild && typeof newChild.type === 'function' && newChild.type.prototype.isReactComponent) {
-            tag = ClassComponent;
+        if (newChild && typeof newChild.type === 'function') {
+            if (newChild.type.prototype.isReactComponent) {
+                tag = ClassComponent;
+            } else {
+                tag = FunctionComponent;
+            }
         } else if (newChild && newChild.type === TEXT_NODE) {
             tag = HostText;// 文本节点
         } else if (newChild && typeof newChild.type === 'string') {
@@ -273,23 +291,26 @@ function commitWork(currentFiber) {
         return;
     }
     let returnFiber = currentFiber.return;
+    // 如果不是DOM节点，则往上找父节点直到找到上一个DOM节点
     while (returnFiber.tag !== HostText && returnFiber.tag !== HostComponent && returnFiber.tag !== HostRoot) {
         returnFiber = returnFiber.return;
     }
     let returnDOM = returnFiber.stateNode;
     let effectTag = currentFiber.effectTag;
     if (effectTag === Placement) {
-        // let nextFiber = currentFiber;
-        // while (nextFiber.tag !== HostComponent && nextFiber.tag !== HostText) {
-        //     nextFiber = nextFiber.child;
-        // }
-        if (currentFiber.tag === ClassComponent) {
-            return;
+        let nextFiber = currentFiber;
+        // 如果不是DOM节点，则往下找孩子节点直到找到DOM节点
+        while (nextFiber.tag !== HostComponent && nextFiber.tag !== HostText) {
+            nextFiber = nextFiber.child;
         }
+        // if (currentFiber.tag === ClassComponent) {
+        //     return;
+        // }
         // 将当前fiber的DOM元素挂载到父fiber的DOM节点上
-        returnDOM.appendChild(currentFiber.stateNode);
+        returnDOM.appendChild(nextFiber.stateNode);
     } else if (effectTag === Deletion) {
         let nextFiber = currentFiber;
+        // 如果不是DOM节点，则往下找孩子节点直到找到DOM节点
         while (nextFiber.tag !== HostComponent && nextFiber.tag !== HostText) {
             nextFiber = nextFiber.child;
         }
@@ -303,6 +324,7 @@ function commitWork(currentFiber) {
                 currentFiber.stateNode.textContent = currentFiber.props.text;
             }
         } else {
+            // 如果不是DOM节点，不需要更新DOM节点属性
             if (currentFiber.tag !== HostComponent && currentFiber.tag !== HostRoot) {
                 return currentFiber.effectTag = null;
             }
@@ -311,4 +333,34 @@ function commitWork(currentFiber) {
         }
     }
     currentFiber.effectTag = null;
+}
+//------------------------------函数组件-----------------------------
+export function useReducer(reducer, initialState) {
+    // 先取上一次渲染对应的hook
+    let hook = workInProgressFiber.alternate && workInProgressFiber.alternate.hooks && workInProgressFiber.alternate.hooks[hooksIndex];
+    if (hook) {
+        // 二次及之后的渲染，直接更新state
+        hook.state = hook.updateQuene.forceUpdate(hook.state);
+    } else {
+        // 第一次渲染，初始化hook对象
+        hook = {
+            state: initialState,// 初始state
+            updateQuene: new UpdateQuene(),// 初始化更新队列
+        }
+    }
+    const dispatch = action => {
+        // 如果有reducer函数，执行reducer获取新的state，否则默认为新state
+        let newState = reducer ? reducer(hook.state, action) : action;
+        // 将新的state加入更新队列
+        hook.updateQuene.enqueneUpdate(new UpdateDefault.Update(newState));
+        // 重新渲染
+        scheduleRoot();
+    }
+    // hooks入队列，索引递增
+    workInProgressFiber.hooks[hooksIndex++] = hook;
+    return [hook.state, dispatch];
+}
+export function useState(initinalState) {
+    // useState是useReducer的特殊情况
+    return useReducer(null, initinalState);
 }

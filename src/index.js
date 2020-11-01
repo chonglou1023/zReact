@@ -1,3 +1,4 @@
+import { useState } from './schedule';
 import React from './zReact';
 import ReactDOM from './zReactDOM';
 const root = document.getElementById('root');
@@ -20,6 +21,32 @@ class Counter extends React.Component {
     )
   }
 }
+const ADD = 'ADD';
+function reducer(state, action) {
+  switch (action.type) {
+    case ADD:
+      return { number: state.number + 1 };
+    default:
+      return state;
+  }
+}
+function Time() {
+  const [addState, dispatch] = React.useReducer(reducer, { number: 0 });
+  const [minuteState, setMinuteState] = React.useState({ count: 0 });
+  return (
+    <div>
+      <span>{this.props.name}</span>
+      <div>
+        <span>{`useReducer:${addState.number}`}</span>
+        <button onClick={() => dispatch({ type: ADD })}>加1</button>
+      </div>
+      <div>
+        <span>{`useState:${minuteState.count}`}</span>
+        <button onClick={() => setMinuteState({ count: minuteState.count - 1 })}>减1</button>
+      </div>
+    </div>
+  )
+}
 const jsx = (
   <div id="container" className="ss">
     <h1 id="a">hhh</h1>
@@ -28,6 +55,7 @@ const jsx = (
       <span>buu</span>
     </div>
     <Counter name="计数器" />
+    <Time name="函数组件计数器" />
   </div>
 )
 const jsx2 = (
